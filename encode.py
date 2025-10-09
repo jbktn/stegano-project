@@ -6,17 +6,20 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 def char_to_shade(c):
     """
-    Map character to subtle black shade using its ASCII code.
-    Distribute ASCII value across RGB channels for smaller color fluctuations.
+    Map a character to a subtle dark shade near black (#000000)
+    using its ASCII code. Small variations prevent total uniformity.
     """
     ascii_val = ord(c)
-    # Clamp to 1-255
     ascii_val = max(1, min(ascii_val, 255))
-    # Spread bits across RGB channels
-    r = ((ascii_val >> 4) & 0xF) / 15 * 0.1 + 0.9  # 0.9-1.0
-    g = ((ascii_val >> 2) & 0x3) / 3 * 0.05 + 0.95 # 0.95-1.0
-    b = (ascii_val & 0x3) / 3 * 0.05 + 0.95        # 0.95-1.0
+
+    # Spread bits across RGB channels, but stay close to black
+    # Use a small intensity range (e.g., 0.0–0.1)
+    r = ((ascii_val >> 4) & 0xF) / 15 * 0.1          # 0.0–0.1
+    g = ((ascii_val >> 2) & 0x3) / 3 * 0.05          # 0.0–0.05
+    b = (ascii_val & 0x3) / 3 * 0.05                 # 0.0–0.05
+
     return Color(r, g, b)
+
 
 def embed_hidden_message(pdf_path, visible_text, hidden_message):
     """
