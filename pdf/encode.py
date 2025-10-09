@@ -10,13 +10,14 @@ def char_to_shade(c):
     Distribute ASCII value across RGB channels for smaller color fluctuations.
     """
     ascii_val = ord(c)
+    sense = 128
     # Clamp to 1-255
     ascii_val = max(1, min(ascii_val, 255))
     # Spread bits across RGB channels
     r = int(ascii_val/36)
     g = int(ascii_val/6 - r*6)
     b = int(ascii_val%6)
-    return Color(float(r/25), float(g/25), float(b/25))
+    return Color(float(r/sense), float(g/sense), float(b/sense))
 
 def embed_hidden_message(pdf_path, visible_text, hidden_message):
     """
@@ -54,6 +55,6 @@ def embed_hidden_message(pdf_path, visible_text, hidden_message):
 
 # Example usage
 visible_text = "This is just a normal line of text that looks black."
-hidden_message = "jestem ziutkiem test 123"
+hidden_message = "testttttttt 211111122222"
 
 embed_hidden_message("hidden_message.pdf", visible_text, hidden_message)

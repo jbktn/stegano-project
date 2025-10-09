@@ -6,9 +6,11 @@ def rgb_to_char(r, g, b):
     Now matches the encoding scheme from encode.py
     """
     # Convert back to the original values used in encoding
-    r_val = round(r * 25)
-    g_val = round(g * 25) 
-    b_val = round(b * 25)
+    
+    sense = 128
+    r_val = round(r * sense)
+    g_val = round(g * sense) 
+    b_val = round(b * sense)
     
     # Reconstruct ASCII value using the same formula as encoding
     ascii_val = r_val * 36 + g_val * 6 + b_val
@@ -39,7 +41,10 @@ def extract_hidden_message(pdf_path):
                         if (r > 0 or g > 0 or b > 0) and not (r == 0 and g == 0 and b == 0):
                             char = rgb_to_char(r, g, b)
                             if char:
-                                hidden_message += char
+                                span_text = span.get("text", "")
+                                repeat = len(span_text) or 1
+                                hidden_message += char * repeat
+
     doc.close()
     return hidden_message
 
