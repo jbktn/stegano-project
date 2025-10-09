@@ -48,6 +48,6 @@ def embed_hidden_message(pdf_path, visible_text, hidden_message):
 
 # Example usage
 visible_text = "This is just a normal line of text that looks black."
-hidden_message = "secret"
+hidden_message = "qwertyuiop"
 
 embed_hidden_message("hidden_message.pdf", visible_text, hidden_message)
