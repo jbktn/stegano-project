@@ -1,9 +1,19 @@
 import fitz  # PyMuPDF
 
 def rgb_to_char(r, g, b):
-    val = round(r * 255)
-    if 1 <= val <= 255:
-        return chr(val)
+    """
+    Convert RGB values back to character based on the distributed encoding scheme.
+    """
+    # Normalize values back to 0-15 for red, 0-3 for green and blue
+    r_val = round((r - 0.9) / 0.1 * 15)
+    g_val = round((g - 0.95) / 0.05 * 3)
+    b_val = round((b - 0.95) / 0.05 * 3)
+    
+    # Reconstruct ASCII value
+    ascii_val = (r_val << 4) | (g_val << 2) | b_val
+    
+    if 1 <= ascii_val <= 255:
+        return chr(ascii_val)
     return ''
 
 def int_to_rgb(color_int):
@@ -24,7 +34,10 @@ def extract_hidden_message(pdf_path):
                     color_int = span.get("color")
                     if color_int is not None:
                         r, g, b = int_to_rgb(color_int)
-                        if r == g == b and 0 < r < 1:
+                        # Check if color values are in the expected ranges
+                        if (0.9 <= r <= 1.0 and 
+                            0.95 <= g <= 1.0 and 
+                            0.95 <= b <= 1.0):
                             char = rgb_to_char(r, g, b)
                             if char:
                                 hidden_message += char
