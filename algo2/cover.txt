@@ -1,0 +1,5 @@
+This is a sample text.
+It will be used as a cover file.
+Each line hides some data.
+This method is subtle and clever.
+Let's decode it later.

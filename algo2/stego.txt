@@ -1,0 +1,6 @@
+This  is a sample text.
+It will be used as a cover file. [EXPAND]
+Each line hides some data. [SHRINK]
+This  method is subtle and clever.
+Let's  decode it later.
+ [EXPAND]
