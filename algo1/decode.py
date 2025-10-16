@@ -31,7 +31,7 @@ def decode_html(input_html: str, threshold=2.0):
     msg_bytes = bits_to_bytes(msg_bits)
     message = msg_bytes.decode('utf-8', errors='replace')
 
-    print(f"✅ Odczytana wiadomość: {message!r}")
+    print(f"Odczytana wiadomość: {message!r}")
     return message
 
 if __name__ == "__main__":

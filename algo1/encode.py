@@ -1,4 +1,3 @@
-# encode_html.py
 def to_bits(data: bytes) -> str:
     return ''.join(f'{b:08b}' for b in data)
 
@@ -18,7 +17,7 @@ def encode_html(output_html: str, cover_lines, message: str):
         "<html><head><meta charset='utf-8'><title>Stego HTML</title></head><body style='font-family: monospace; line-height: 1.5;'>"
     ]
 
-    shift_amount = 4  # przesunięcie w pikselach dla bitu 1
+    shift_amount = 4  # przesunięcie dla bitu 1
 
     for i, line in enumerate(cover_lines):
         bit = payload_bits[i] if i < len(payload_bits) else '0'
@@ -30,11 +29,11 @@ def encode_html(output_html: str, cover_lines, message: str):
     with open(output_html, "w", encoding="utf-8") as f:
         f.write("\n".join(html_lines))
 
-    print(f"✅ Zapisano HTML: {output_html}")
+    print(f"Zapisano HTML: {output_html}")
     print(f"Ukryta wiadomość: {message!r}")
     print(f"Użyto {len(payload_bits)} linii.")
 
 if __name__ == "__main__":
     lines = [f"Line {i+1}" for i in range(2000)]
-    secret = "To jest tajna wiadomość ukryta w HTML 😎"
+    secret = "Ukryta wiadomosc w html"
     encode_html("stego.html", lines, secret)
