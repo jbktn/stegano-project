@@ -10,7 +10,7 @@ def char_to_shade(c):
     Distribute ASCII value across RGB channels for smaller color fluctuations.
     """
     ascii_val = ord(c)
-    sense = 10
+    sense = 128
     # Clamp to 1-255
     ascii_val = max(1, min(ascii_val, 255))
     # Spread bits across RGB channels

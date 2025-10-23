@@ -54,9 +54,7 @@ def decode_html(stego_html: str) -> str:
 
     return binary_to_text(extracted_bits)
 
-# -------------------------------
-# Example usage
-# -------------------------------
+
 if __name__ == "__main__":
     cover_text = """Lorem ipsum dolor sit amet,
 consectetur adipiscing elit,

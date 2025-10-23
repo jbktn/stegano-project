@@ -7,7 +7,7 @@ def rgb_to_char(r, g, b):
     """
     # Convert back to the original values used in encoding
     
-    sense = 10
+    sense = 128
     r_val = round(r * sense)
     g_val = round(g * sense) 
     b_val = round(b * sense)
