@@ -1,4 +1,3 @@
-# decode_html.py
 from bs4 import BeautifulSoup
 
 def bits_to_bytes(bitstring: str) -> bytes:
