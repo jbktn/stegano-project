@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-"""
-encode.py - Ukryj tajną wiadomość w pliku tekstowym
-
-Użycie:
-    python encode.py -c cover.txt -s "Tajna wiadomość" -o stego.txt
-    python encode.py -c cover.txt -sf secret.txt -o stego.txt
-"""
-
 import sys
 import argparse
 from pathlib import Path
@@ -128,12 +119,6 @@ Metody:
         """
     )
 
-    parser.add_argument('-c', '--cover', required=True,
-                       help='Plik z tekstem przykrywającym')
-    parser.add_argument('-s', '--secret', 
-                       help='Tajna wiadomość (tekst)')
-    parser.add_argument('-sf', '--secret-file',
-                       help='Plik z tajną wiadomością')
     parser.add_argument('-o', '--output', required=True,
                        help='Plik wyjściowy ze stego-tekstem')
     parser.add_argument('-m', '--method', 
@@ -145,47 +130,24 @@ Metody:
 
     args = parser.parse_args()
 
-    # Walidacja
-    if not args.secret and not args.secret_file:
-        parser.error("Musisz podać -s WIADOMOŚĆ lub -sf PLIK")
-
-    if args.secret and args.secret_file:
-        parser.error("Podaj tylko -s lub -sf, nie oba")
-
     try:
-        # Wczytaj tekst przykrywający
-        cover_path = Path(args.cover)
-        if not cover_path.exists():
-            print(f"❌ Błąd: Plik '{args.cover}' nie istnieje!", file=sys.stderr)
-            sys.exit(1)
+        cover_text = """Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod 
+tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim 
+veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea 
+commodo consequat. Duis aute irure dolor in reprehenderit in voluptate 
+velit esse cillum dolore eu fugiat nulla pariatur.
 
-        with open(cover_path, 'r', encoding='utf-8') as f:
-            cover_text = f.read().strip()
+Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia 
+deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste 
+natus error sit voluptatem accusantium doloremque laudantium totam rem 
+aperiam eaque ipsa quae ab illo inventore veritatis et quasi architecto 
+beatae vitae dicta sunt explicabo."""
 
-        if not cover_text:
-            print("❌ Błąd: Plik przykrywający jest pusty!", file=sys.stderr)
-            sys.exit(1)
-
-        # Wczytaj tajną wiadomość
-        if args.secret:
-            secret_text = args.secret
-        else:
-            secret_path = Path(args.secret_file)
-            if not secret_path.exists():
-                print(f"❌ Błąd: Plik '{args.secret_file}' nie istnieje!", file=sys.stderr)
-                sys.exit(1)
-
-            with open(secret_path, 'r', encoding='utf-8') as f:
-                secret_text = f.read().strip()
-
-        if not secret_text:
-            print("❌ Błąd: Tajna wiadomość jest pusta!", file=sys.stderr)
-            sys.exit(1)
-
-        if args.verbose:
-            print(f"📄 Tekst przykrywający: {len(cover_text)} znaków")
-            print(f"🔒 Tajna wiadomość: {len(secret_text)} znaków")
-            print(f"🔧 Metoda: {args.method}")
+        secret_text = input("Podaj tajną wiadomość: ")
+        
+        print(f"📄 Tekst przykrywający: {len(cover_text)} znaków")
+        print(f"🔒 Tajna wiadomość: {len(secret_text)} znaków")
+        print(f"🔧 Metoda: {args.method}")
 
         # Kodowanie
         if args.method == 'zero-width':
