@@ -1,210 +1,113 @@
 #!/usr/bin/env python3
-"""
-decode.py - Wydobądź ukrytą wiadomość z pliku tekstowego
-
-Użycie:
-    python decode.py -i stego.txt
-    python decode.py -i stego.txt -o secret.txt
-"""
-
 import sys
 import argparse
 from pathlib import Path
 
 
-class ZeroWidthSteganography:
-    """Steganografia używająca znaków zerowej szerokości Unicode."""
-
-    ZWSP = '\u200B'  # Zero-width space (0)
-    ZWNJ = '\u200C'  # Zero-width non-joiner (1)
-    ZWJ = '\u200D'   # Zero-width joiner (separator)
-
-    def decode(self, stego_text):
-        """Wydobądź ukrytą wiadomość."""
-        # Wyciągnij znaki zerowej szerokości
-        zw_chars = ''.join(c for c in stego_text 
-                          if c in [self.ZWSP, self.ZWNJ, self.ZWJ])
-
-        if not zw_chars:
-            return None
-
-        # Konwertuj na binarny
-        binary = ''.join('0' if c == self.ZWSP else '1' if c == self.ZWNJ else ''
-                        for c in zw_chars)
-
-        # Konwertuj binarny na tekst
-        text = ""
-        for i in range(0, len(binary), 8):
-            byte = binary[i:i+8]
-            if len(byte) == 8:
-                text += chr(int(byte, 2))
-
-        return text if text else None
-
-
 class FeatureCodingSteganography:
-    """Steganografia oparta na kodowaniu cech."""
-
     def __init__(self):
         self.categories = {
-            'CF1': list('aeiouąęóAEIOU'),
-            'CF2': list('bcdfghjklmnpqrstvwxyzćłńśźżBCDFGHJKLMNPQRSTVWXYZĆŁŃŚŹŻ'),
+            'CF1': list('aeiou'),
+            'CF2': list('bcdfghjklmnpqrstvwxyz'),
         }
 
         self.char_to_category = {}
-        for category, chars in self.categories.items():
+        for cat_name, chars in self.categories.items():
             for char in chars:
-                self.char_to_category[char] = category
+                self.char_to_category[char] = cat_name
 
     def decode(self, stego_text):
-        """Wydobądź ukrytą wiadomość."""
-        # Znajdź transformowane znaki (uppercase)
         transformed = []
+
         for i, char in enumerate(stego_text):
             char_lower = char.lower()
-            if (char.isupper() and char_lower in self.char_to_category):
-                transformed.append((i, char_lower, self.char_to_category[char_lower]))
+            if char.isupper() and char_lower in self.char_to_category:
+                category = self.char_to_category[char_lower]
+                transformed.append((i, char_lower, category))
 
         if len(transformed) < 2:
             return None
 
-        # Dekoduj przez porównanie kategorii
-        current_category = transformed[0][2]
-        binary = []
+        current_state = transformed[0][2]
+        decoded_bits = []
 
         for i in range(1, len(transformed)):
-            next_category = transformed[i][2]
-            if next_category == current_category:
-                binary.append('0')
+            next_state = transformed[i][2]
+
+            if next_state == current_state:
+                decoded_bits.append('0')
             else:
-                binary.append('1')
-                current_category = next_category
+                decoded_bits.append('1')
+                current_state = next_state
 
-        # Konwertuj binarny na tekst
-        binary_str = ''.join(binary)
-        text = ""
-        for i in range(0, len(binary_str), 8):
-            byte = binary_str[i:i+8]
-            if len(byte) == 8:
-                text += chr(int(byte, 2))
+        return ''.join(decoded_bits)
 
-        return text if text else None
+
+def binary_to_text(binary_str):
+    if len(binary_str) % 8 != 0:
+        binary_str = binary_str + '0' * (8 - len(binary_str) % 8)
+
+    text = ""
+    for i in range(0, len(binary_str), 8):
+        byte = binary_str[i:i+8]
+        text += chr(int(byte, 2))
+    return text
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Wydobądź ukrytą wiadomość z pliku tekstowego',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Przykłady użycia:
-  # Wyświetl wiadomość na ekranie
-  python decode.py -i stego.txt
+    parser = argparse.ArgumentParser(description='Feature Coding Steganography - Decoder')
 
-  # Zapisz wiadomość do pliku
-  python decode.py -i stego.txt -o secret.txt
-
-  # Spróbuj obu metod automatycznie
-  python decode.py -i stego.txt -m auto
-
-Metody:
-  auto          - Automatycznie wykryj metodę (domyślnie)
-  zero-width    - Dekoduj znaki zerowej szerokości
-  feature-coding - Dekoduj transformacje znaków
-        """
-    )
-
-    parser.add_argument('-i', '--input', required=True,
-                       help='Plik ze stego-tekstem')
-    parser.add_argument('-o', '--output',
-                       help='Plik wyjściowy dla odkodowanej wiadomości')
-    parser.add_argument('-m', '--method',
-                       choices=['auto', 'zero-width', 'feature-coding'],
-                       default='auto',
-                       help='Metoda dekodowania (domyślnie: auto)')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                       help='Pokaż szczegółowe informacje')
+    parser.add_argument('-i', '--input', required=True, help='Input stego file')
+    parser.add_argument('-o', '--output', help='Output file for decoded message')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
 
     args = parser.parse_args()
 
     try:
-        # Wczytaj stego-tekst
         input_path = Path(args.input)
         if not input_path.exists():
-            print(f"❌ Błąd: Plik '{args.input}' nie istnieje!", file=sys.stderr)
+            print(f"Error: File '{args.input}' not found!", file=sys.stderr)
             sys.exit(1)
 
         with open(input_path, 'r', encoding='utf-8') as f:
             stego_text = f.read()
 
         if not stego_text:
-            print("❌ Błąd: Plik jest pusty!", file=sys.stderr)
+            print("Error: File is empty!", file=sys.stderr)
             sys.exit(1)
 
         if args.verbose:
-            print(f"📄 Wczytano: {len(stego_text)} znaków")
-            print(f"🔍 Metoda: {args.method}")
+            print(f"Input: {len(stego_text)} chars")
 
-        # Dekodowanie
-        secret_text = None
-        method_used = None
+        stego = FeatureCodingSteganography()
+        decoded_binary = stego.decode(stego_text)
 
-        if args.method == 'auto':
-            # Spróbuj zero-width najpierw
-            zw_system = ZeroWidthSteganography()
-            secret_text = zw_system.decode(stego_text)
-            if secret_text:
-                method_used = 'zero-width'
-            else:
-                # Spróbuj feature-coding
-                fc_system = FeatureCodingSteganography()
-                secret_text = fc_system.decode(stego_text)
-                if secret_text:
-                    method_used = 'feature-coding'
-
-        elif args.method == 'zero-width':
-            zw_system = ZeroWidthSteganography()
-            secret_text = zw_system.decode(stego_text)
-            method_used = 'zero-width'
-
-        else:  # feature-coding
-            fc_system = FeatureCodingSteganography()
-            secret_text = fc_system.decode(stego_text)
-            method_used = 'feature-coding'
-
-        if not secret_text:
-            print("❌ Nie znaleziono ukrytej wiadomości!", file=sys.stderr)
-            print("   Sprawdź czy plik zawiera zakodowaną wiadomość.", file=sys.stderr)
+        if not decoded_binary:
+            print("Error: No hidden message found!", file=sys.stderr)
             sys.exit(1)
 
-        # Wynik
+        secret_text = binary_to_text(decoded_binary)
+
         if args.output:
             output_path = Path(args.output)
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(secret_text)
 
             if args.verbose:
-                print(f"\n✅ Sukces!")
-                print(f"🔓 Odkodowano metodą: {method_used}")
-                print(f"📝 Długość wiadomości: {len(secret_text)} znaków")
-                print(f"💾 Zapisano do: {args.output}")
+                print(f"Decoded: '{secret_text}'")
+                print(f"Saved to: {args.output}")
             else:
-                print(f"✅ Odkodowano wiadomość do pliku: {args.output}")
+                print(f"Decoded to: {args.output}")
         else:
             if args.verbose:
-                print(f"\n✅ Sukces!")
-                print(f"🔓 Odkodowano metodą: {method_used}")
-                print(f"📝 Długość wiadomości: {len(secret_text)} znaków")
-                print(f"\n{'='*60}")
-                print("ODKODOWANA WIADOMOŚĆ:")
-                print('='*60)
+                print(f"Binary: {len(decoded_binary)} bits")
+                print(f"Message: {len(secret_text)} chars")
+                print()
 
             print(secret_text)
 
-            if args.verbose:
-                print('='*60)
-
     except Exception as e:
-        print(f"❌ Nieoczekiwany błąd: {e}", file=sys.stderr)
+        print(f"Unexpected error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
