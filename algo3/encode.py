@@ -3,6 +3,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 import re
 import sys
+import textwrap # <-- DODANE
 
 def text_to_bits(text: str) -> str:
     return ''.join(format(ord(c), '08b') for c in text)
@@ -40,27 +41,84 @@ def encode(secret: str, cover_text: str) -> str:
 def write_pdf(text: str, filename: str):
     c = canvas.Canvas(filename, pagesize=A4)
     width, height = A4
-    text_object = c.beginText(50, height - 50)
-    text_object.setFont("Courier", 12)
+    
+    # --- START POPRAWKI PIONOWEJ ---
+    left_margin = 50
+    top_margin = 50
+    bottom_margin = 50
+    
+    font_name = "Courier"
+    font_size = 12
+    # Odstęp między liniami (np. 120% rozmiaru czcionki)
+    line_height = font_size * 1.2 
+
+    # Zacznij pisać tekst od góry
+    text_object = c.beginText(left_margin, height - top_margin)
+    text_object.setFont(font_name, font_size)
+    
+    # Śledź aktualną pozycję Y (pionową)
+    current_y = height - top_margin
+
     for line in text.splitlines():
+        # Sprawdź, czy kolejna linia zmieści się na stronie
+        if current_y < bottom_margin:
+            # Jeśli nie, narysuj dotychczasowy tekst
+            c.drawText(text_object)
+            # I zacznij nową stronę
+            c.showPage()
+            
+            # Zresetuj obiekt tekstowy na górze nowej strony
+            text_object = c.beginText(left_margin, height - top_margin)
+            text_object.setFont(font_name, font_size)
+            current_y = height - top_margin
+        
+        # Dodaj linię do obiektu tekstowego
         text_object.textLine(line)
+        # Ręcznie przesuń pozycję Y o wysokość linii
+        current_y -= line_height
+    
+    # Narysuj pozostały tekst na ostatniej stronie
     c.drawText(text_object)
-    c.save()
+    # --- KONIEC POPRAWKI ---
+    
+    c.save() # Zapisz plik
 
 if __name__ == "__main__":
     # ---- konfiguracja ----
     COVER_FILE = "cover.txt"
     OUTPUT_PDF = "stego.pdf"
-    SECRET = "To jest tajna wiadomość ukryta w PDF."  # hardcoded
+    SECRET = "To jest tajna wiadomość ukryta w PDF."
 
     # ---- wczytaj cover text ----
     with open(COVER_FILE, "r", encoding="utf-8") as f:
-        cover_text = f.read()
+        original_cover_text = f.read()
+
+    # --- START POPRAWKI: Formatuj tekst PRZED kodowaniem ---
+    
+    # Najpierw zwiń cały tekst do jednej linii, usuwając oryginalne złamania
+    single_line_text = " ".join(original_cover_text.split())
+    
+    # Oblicz bezpieczną szerokość łamania w znakach dla Courier 12 na A4
+    usable_width_points = A4[0] - 50 - 50 # A4[0] to szerokość
+    char_width = 12 * 0.6 # Szerokość znaku Courier 12pt
+    wrap_width_chars = int(usable_width_points / char_width) # ok. 68
+
+    wrapper = textwrap.TextWrapper(
+        width=wrap_width_chars, 
+        break_long_words=False,
+        replace_whitespace=True # To jest bezpieczne, bo robimy to PRZED kodowaniem
+    )
+    
+    # Stwórz nowy cover_text z poprawnymi złamaniami linii
+    cover_text = "\n".join(wrapper.wrap(single_line_text))
+    # --- KONIEC POPRAWKI ---
 
     # ---- zakoduj sekret ----
+    # Użyj nowego, sformatowanego tekstu
     stego_text = encode(SECRET, cover_text)
 
     # ---- zapisz do PDF ----
+    # Użyj poprawionej funkcji write_pdf
     write_pdf(stego_text, OUTPUT_PDF)
 
     print(f"[OK] Ukryto wiadomość w {OUTPUT_PDF}")
