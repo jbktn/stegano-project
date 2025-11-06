@@ -3,12 +3,10 @@ import re
 from pathlib import Path
 from bs4 import BeautifulSoup
 
-# Stałe
 COVER_FILE = "cover.txt"
 OUTPUT_FILE = "stego_subtelny.html"
 SECRET_TEXT = "Ukryta wiadomosc TEST 123000321!!!"
 
-# Konwersja tekstu na bity
 def text_to_binary(secret_text: str) -> str:
     return ''.join(format(b, '08b') for b in secret_text.encode('utf-8'))
 
@@ -29,7 +27,7 @@ def binary_to_text(bits: str) -> str:
     try:
         return b_array.decode('utf-8')
     except UnicodeDecodeError:
-        return "!!!BLAD DEKODOWANIA"
+        return "BLAD DEKODOWANIA"
 
 # ukrywanie
 def encode_html_with_formatting(cover_file: str, secret_text: str, output_html: str):
@@ -37,7 +35,7 @@ def encode_html_with_formatting(cover_file: str, secret_text: str, output_html: 
     try:
         cover_text = Path(cover_file).read_text(encoding='utf-8')
     except FileNotFoundError:
-        print(f"!!!BRAK PLIKU COVER TEXT: {cover_file}")
+        print(f"BRAK PLIKU COVER TEXT: {cover_file}")
         return
 
     bits = pad_bits(text_to_binary(secret_text))
@@ -94,9 +92,7 @@ def encode_html_with_formatting(cover_file: str, secret_text: str, output_html: 
     Path(output_html).write_text('\n'.join(html_lines), encoding='utf-8')
     print(f"+++Plik zapisany: {output_html}")
 
-# Dekodowanie
-def decode_html_with_formatting(stego_html: str) -> str:
-    
+def decode_html_with_formatting(stego_html: str) -> str: 
     try:
         html_text = Path(stego_html).read_text(encoding='utf-8')
     except FileNotFoundError:
@@ -146,10 +142,8 @@ if __name__ == "__main__":
     print("Algorytm zaczyna dzialanie!")
     print("----------------------------------------------------")
 
-    # Kodowanie
     encode_html_with_formatting(COVER_FILE, SECRET_TEXT, OUTPUT_FILE)
     
-    # Dekodowanie
     decoded = decode_html_with_formatting(OUTPUT_FILE)
     print(f"Zdekodowano: {decoded}")
 

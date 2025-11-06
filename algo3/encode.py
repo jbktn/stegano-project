@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""
-Emoticon-based Text Steganography - Encoding
-Based on Wang et al. (2009) algorithm
-Reads cover text from cover.txt (multiple lines) and secret message from secret.txt
-Each line in cover.txt is treated as a separate chat message
-"""
-
 import sys
 import math
 import os
@@ -23,28 +15,15 @@ EMOTICON_SETS = {
 }
 
 def bits_to_decimal(bits):
-    """Convert binary string to decimal"""
     return int(bits, 2)
 
 def text_to_binary(text):
-    """Convert text to binary representation"""
     binary = ''
     for char in text:
         binary += format(ord(char), '08b')
     return binary
 
 def create_stego_sentences(cover_sentences, secret_bits):
-    """
-    Create steganographic sentences with embedded emoticons
-    Uses different cover sentences from the list
-
-    Args:
-        cover_sentences: List of cover sentences (chat messages)
-        secret_bits: Binary string to embed
-
-    Returns:
-        List of stego sentences with emoticons
-    """
     emoticon_set_names = list(EMOTICON_SETS.keys())
 
     results = []
@@ -158,7 +137,6 @@ def main():
     print("STEGO SENTENCES (CHAT MESSAGES):")
     print("=" * 60)
 
-    # Save stego sentences to output file
     with open('stego_output.txt', 'w', encoding='utf-8') as f:
         for i, result in enumerate(results, 1):
             print(f"\nMessage {i}:")
@@ -167,7 +145,6 @@ def main():
             print(f"  Emoticon: {result['emoticon']} (from '{result['set']}' set)")
             print(f"  Bits:     {result['bits_embedded']} ({result['bits_count']} bits)")
 
-            # Write to file
             f.write(result['sentence'] + '\n')
 
     print(f"\n{'=' * 60}")

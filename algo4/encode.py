@@ -1,17 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Fixed Missing-Letter Steganography Encoder
-Encodes actual ciphertext values in '?' pattern and saves combined key.
-"""
-
 import random
 
 def sum_of_squares_of_digits(r: int) -> int:
     return sum((int(d)**2) for d in str(r))
 
 def encipher_one_time_pad(plaintext: bytes, rng_seed=None):
-    """Encrypt plaintext with one-time pad per the paper."""
     if rng_seed is not None:
         random.seed(rng_seed)
     A = [random.randrange(256) for _ in range(1000)]
@@ -29,7 +21,6 @@ def encipher_one_time_pad(plaintext: bytes, rng_seed=None):
     return bytes(cipher), bytes(key)
 
 def missing_letter_hide(ciphertext: bytes, cover_text: str, rng_seed=None):
-    """Hide ciphertext bytes by replacing letters with '?'."""
     if rng_seed is not None:
         random.seed(rng_seed)
     words = cover_text.split()
@@ -52,7 +43,6 @@ def missing_letter_hide(ciphertext: bytes, cover_text: str, rng_seed=None):
     new_words.extend(words[w_index:])
     return " ".join(new_words)
 
-# --- Shakespeare text cover
 SHAKESPEARE_SONNET_18 = """Shall I compare thee to a summer’s day?
 Thou art more lovely and more temperate:
 Rough winds do shake the darling buds of May,

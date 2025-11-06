@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Fixed Missing-Letter Steganography Decoder
-Recovers UTF-8 message using 'stego_text.txt' + 'key.bin'.
-"""
-
 def sum_of_squares_of_digits(r: int) -> int:
     return sum((int(d)**2) for d in str(r))
 

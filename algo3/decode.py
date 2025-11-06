@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-"""
-Emoticon-based Text Steganography - Decoding
-Based on Wang et al. (2009) algorithm
-Reads stego sentences from stego_output.txt or specified file
-"""
-
 import sys
 import math
 import os
@@ -22,16 +15,9 @@ EMOTICON_SETS = {
 }
 
 def decimal_to_bits(d, n):
-    """Convert decimal to binary string of length n"""
     return format(d, f'0{n}b')
 
 def find_emoticon_info(emoticon):
-    """
-    Find emoticon in sets and return its info
-
-    Returns:
-        (set_name, index, bits_capacity) or (None, None, None)
-    """
     for set_name, emoticon_list in EMOTICON_SETS.items():
         if emoticon in emoticon_list:
             index = emoticon_list.index(emoticon)
@@ -41,15 +27,6 @@ def find_emoticon_info(emoticon):
     return None, None, None
 
 def extract_bits_from_sentence(stego_sentence):
-    """
-    Extract secret bits from a stego sentence
-
-    Args:
-        stego_sentence: Sentence with embedded emoticon
-
-    Returns:
-        Binary string of extracted bits
-    """
     # Find all emoticons in the sentence
     emoticons_found = []
     for emoticon_set in EMOTICON_SETS.values():
@@ -94,7 +71,6 @@ def extract_bits_from_sentence(stego_sentence):
     return extracted_bits, emoticon, set_name
 
 def binary_to_text(binary_string):
-    """Convert binary string to text"""
     # Ensure length is multiple of 8
     padding = len(binary_string) % 8
     if padding != 0:
@@ -111,15 +87,6 @@ def binary_to_text(binary_string):
     return text
 
 def decode_messages(stego_sentences):
-    """
-    Decode multiple stego sentences
-
-    Args:
-        stego_sentences: List of stego sentences
-
-    Returns:
-        Decoded secret message
-    """
     all_bits = ""
 
     print("\n" + "=" * 60)
