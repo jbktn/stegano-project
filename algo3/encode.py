@@ -1,124 +1,179 @@
-# encode.py
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-import re
+#!/usr/bin/env python3
+"""
+Emoticon-based Text Steganography - Encoding
+Based on Wang et al. (2009) algorithm
+Reads cover text from cover.txt (multiple lines) and secret message from secret.txt
+Each line in cover.txt is treated as a separate chat message
+"""
+
 import sys
-import textwrap # <-- DODANE
+import math
+import os
 
-def text_to_bits(text: str) -> str:
-    return ''.join(format(ord(c), '08b') for c in text)
+# Pre-defined emoticon sets (can be customized)
+EMOTICON_SETS = {
+    'smile': ['😊', '😀', '🙂', '😄', '😁', '😃', '😆', '😅'],
+    'laugh': ['😂', '🤣', '😹', '😸'],
+    'cry': ['😢', '😭', '😿', '😥', '😰', '😓', '😪', '😫'],
+    'love': ['😍', '😘', '😻', '💖', '💕', '💓', '❤️', '💗'],
+    'angry': ['😠', '😡', '👿', '😤'],
+    'sad': ['😔', '😞', '😟', '🙁', '☹️', '😕'],
+    'surprise': ['😮', '😲', '😯', '😦', '😧', '😨'],
+    'cool': ['😎', '🕶️', '😏', '🤓']
+}
 
-def int_to_bits(n: int, width: int) -> str:
-    return format(n, '0{}b'.format(width))
+def bits_to_decimal(bits):
+    """Convert binary string to decimal"""
+    return int(bits, 2)
 
-SPACE_BETWEEN_WORDS_REGEX = re.compile(r'(?<=\S) (?=\S)')
+def text_to_binary(text):
+    """Convert text to binary representation"""
+    binary = ''
+    for char in text:
+        binary += format(ord(char), '08b')
+    return binary
 
-def encode(secret: str, cover_text: str) -> str:
-    secret_bytes_len = len(secret.encode('utf-8'))
-    length_bits = int_to_bits(secret_bytes_len, 32)
-    data_bits = ''.join(format(b, '08b') for b in secret.encode('utf-8'))
-    bits = length_bits + data_bits
+def create_stego_sentences(cover_sentences, secret_bits):
+    """
+    Create steganographic sentences with embedded emoticons
+    Uses different cover sentences from the list
 
-    matches = list(SPACE_BETWEEN_WORDS_REGEX.finditer(cover_text))
-    if len(matches) < len(bits):
-        raise ValueError("Cover text too short for secret message")
+    Args:
+        cover_sentences: List of cover sentences (chat messages)
+        secret_bits: Binary string to embed
 
-    out_parts = []
-    last_end = 0
-    used = 0
-    for m in matches:
-        out_parts.append(cover_text[last_end:m.start()])
-        if used < len(bits):
-            bit = bits[used]
-            out_parts.append('  ' if bit == '1' else ' ')
+    Returns:
+        List of stego sentences with emoticons
+    """
+    emoticon_set_names = list(EMOTICON_SETS.keys())
+
+    results = []
+    bit_index = 0
+    cover_index = 0
+
+    while bit_index < len(secret_bits):
+        # Get current cover sentence (cycle through if we run out)
+        current_cover = cover_sentences[cover_index % len(cover_sentences)]
+        cover_index += 1
+
+        # Determine which set to use (rotate through sets)
+        set_idx = (bit_index // 4) % len(emoticon_set_names)
+        emoticon_set_name = emoticon_set_names[set_idx]
+
+        emoticon_set = EMOTICON_SETS[emoticon_set_name]
+        N = len(emoticon_set)
+        n = math.floor(math.log2(N))
+
+        # Check if we have enough bits left
+        bits_needed = n + 2  # n bits for emoticon, 1 for position, 1 for punctuation
+        if bit_index + bits_needed > len(secret_bits):
+            # Pad with zeros if needed
+            remaining = secret_bits[bit_index:]
+            secret_bits += '0' * (bits_needed - len(remaining))
+
+        # Extract bits
+        emoticon_bits = secret_bits[bit_index:bit_index+n]
+        position_bit = secret_bits[bit_index+n] if bit_index+n < len(secret_bits) else '0'
+        punct_bit = secret_bits[bit_index+n+1] if bit_index+n+1 < len(secret_bits) else '0'
+
+        # Select emoticon
+        d = bits_to_decimal(emoticon_bits)
+        if d >= N:
+            d = N - 1
+        emoticon = emoticon_set[d]
+
+        # Determine position (0=start, 1=end)
+        position = 'end' if position_bit == '1' else 'start'
+
+        # Determine punctuation (0=with comma, 1=without)
+        punctuation = '' if punct_bit == '1' else ','
+
+        # Build stego sentence
+        if position == 'start':
+            stego = f"{emoticon}{punctuation} {current_cover}"
         else:
-            out_parts.append(' ')
-        last_end = m.end()
-        used += 1
-    out_parts.append(cover_text[last_end:])
-    return ''.join(out_parts)
+            stego = f"{current_cover} {punctuation}{emoticon}"
 
-def write_pdf(text: str, filename: str):
-    c = canvas.Canvas(filename, pagesize=A4)
-    width, height = A4
-    
-    # --- START POPRAWKI PIONOWEJ ---
-    left_margin = 50
-    top_margin = 50
-    bottom_margin = 50
-    
-    font_name = "Courier"
-    font_size = 12
-    # Odstęp między liniami (np. 120% rozmiaru czcionki)
-    line_height = font_size * 1.2 
+        results.append({
+            'sentence': stego,
+            'bits_embedded': emoticon_bits + position_bit + punct_bit,
+            'bits_count': len(emoticon_bits + position_bit + punct_bit),
+            'emoticon': emoticon,
+            'set': emoticon_set_name,
+            'cover_used': current_cover
+        })
 
-    # Zacznij pisać tekst od góry
-    text_object = c.beginText(left_margin, height - top_margin)
-    text_object.setFont(font_name, font_size)
-    
-    # Śledź aktualną pozycję Y (pionową)
-    current_y = height - top_margin
+        bit_index += bits_needed
 
-    for line in text.splitlines():
-        # Sprawdź, czy kolejna linia zmieści się na stronie
-        if current_y < bottom_margin:
-            # Jeśli nie, narysuj dotychczasowy tekst
-            c.drawText(text_object)
-            # I zacznij nową stronę
-            c.showPage()
-            
-            # Zresetuj obiekt tekstowy na górze nowej strony
-            text_object = c.beginText(left_margin, height - top_margin)
-            text_object.setFont(font_name, font_size)
-            current_y = height - top_margin
-        
-        # Dodaj linię do obiektu tekstowego
-        text_object.textLine(line)
-        # Ręcznie przesuń pozycję Y o wysokość linii
-        current_y -= line_height
-    
-    # Narysuj pozostały tekst na ostatniej stronie
-    c.drawText(text_object)
-    # --- KONIEC POPRAWKI ---
-    
-    c.save() # Zapisz plik
+    return results
+
+def main():
+    # Check if files are provided as arguments
+    if len(sys.argv) >= 3:
+        cover_file = sys.argv[1]
+        secret_file = sys.argv[2]
+    else:
+        # Default file names
+        cover_file = 'cover.txt'
+        secret_file = 'secret.txt'
+
+    # Read cover sentences from file (one per line)
+    if not os.path.exists(cover_file):
+        print(f"Error: Cover file '{cover_file}' not found!")
+        print(f"\nUsage: python encode.py [cover_file] [secret_file]")
+        print(f"Default: python encode.py (uses cover.txt and secret.txt)")
+        sys.exit(1)
+
+    with open(cover_file, 'r', encoding='utf-8') as f:
+        cover_sentences = [line.strip() for line in f if line.strip()]
+
+    if not cover_sentences:
+        print(f"Error: Cover file '{cover_file}' is empty!")
+        sys.exit(1)
+
+    # Read secret message from file
+    if not os.path.exists(secret_file):
+        print(f"Error: Secret file '{secret_file}' not found!")
+        print(f"\nUsage: python encode.py [cover_file] [secret_file]")
+        print(f"Default: python encode.py (uses cover.txt and secret.txt)")
+        sys.exit(1)
+
+    with open(secret_file, 'r', encoding='utf-8') as f:
+        secret_message = f.read().strip()
+
+    # Convert secret message to binary
+    secret_bits = text_to_binary(secret_message)
+
+    print(f"\nCover sentences (from {cover_file}): {len(cover_sentences)} messages")
+    for i, sentence in enumerate(cover_sentences, 1):
+        print(f"  {i}. {sentence}")
+    print(f"\nSecret message (from {secret_file}): {secret_message}")
+    print(f"Secret in binary: {secret_bits}")
+    print(f"Total bits to embed: {len(secret_bits)}\n")
+
+    # Create stego sentences
+    results = create_stego_sentences(cover_sentences, secret_bits)
+
+    print("=" * 60)
+    print("STEGO SENTENCES (CHAT MESSAGES):")
+    print("=" * 60)
+
+    # Save stego sentences to output file
+    with open('stego_output.txt', 'w', encoding='utf-8') as f:
+        for i, result in enumerate(results, 1):
+            print(f"\nMessage {i}:")
+            print(f"  Original: {result['cover_used']}")
+            print(f"  Stego:    {result['sentence']}")
+            print(f"  Emoticon: {result['emoticon']} (from '{result['set']}' set)")
+            print(f"  Bits:     {result['bits_embedded']} ({result['bits_count']} bits)")
+
+            # Write to file
+            f.write(result['sentence'] + '\n')
+
+    print(f"\n{'=' * 60}")
+    print(f"Total messages created: {len(results)}")
+    print(f"Stego sentences saved to: stego_output.txt")
+    print(f"{'=' * 60}")
 
 if __name__ == "__main__":
-    # ---- konfiguracja ----
-    COVER_FILE = "cover.txt"
-    OUTPUT_PDF = "stego.pdf"
-    SECRET = "To jest tajna wiadomość ukryta w PDF."
-
-    # ---- wczytaj cover text ----
-    with open(COVER_FILE, "r", encoding="utf-8") as f:
-        original_cover_text = f.read()
-
-    # --- START POPRAWKI: Formatuj tekst PRZED kodowaniem ---
-    
-    # Najpierw zwiń cały tekst do jednej linii, usuwając oryginalne złamania
-    single_line_text = " ".join(original_cover_text.split())
-    
-    # Oblicz bezpieczną szerokość łamania w znakach dla Courier 12 na A4
-    usable_width_points = A4[0] - 50 - 50 # A4[0] to szerokość
-    char_width = 12 * 0.6 # Szerokość znaku Courier 12pt
-    wrap_width_chars = int(usable_width_points / char_width) # ok. 68
-
-    wrapper = textwrap.TextWrapper(
-        width=wrap_width_chars, 
-        break_long_words=False,
-        replace_whitespace=True # To jest bezpieczne, bo robimy to PRZED kodowaniem
-    )
-    
-    # Stwórz nowy cover_text z poprawnymi złamaniami linii
-    cover_text = "\n".join(wrapper.wrap(single_line_text))
-    # --- KONIEC POPRAWKI ---
-
-    # ---- zakoduj sekret ----
-    # Użyj nowego, sformatowanego tekstu
-    stego_text = encode(SECRET, cover_text)
-
-    # ---- zapisz do PDF ----
-    # Użyj poprawionej funkcji write_pdf
-    write_pdf(stego_text, OUTPUT_PDF)
-
-    print(f"[OK] Ukryto wiadomość w {OUTPUT_PDF}")
+    main()
