@@ -13,7 +13,7 @@ def rgb_to_char(r, g, b):
     """
     Convert RGB values back to character based on the distributed encoding scheme.
     """
-    sense = 8
+    sense = 128
     r_val = round(r * sense)
     g_val = round(g * sense)
     b_val = round(b * sense)
