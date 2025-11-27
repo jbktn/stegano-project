@@ -1,6 +1,8 @@
+import argparse
 import sys
 import math
 import os
+from pathlib import Path
 
 # Optimized 4-category emoticon sets - EXACTLY 16 emoticons each
 EMOTICON_SETS = {
@@ -34,11 +36,7 @@ def text_to_binary(text):
 def batch_sentiment_labels_with_llm(cover_sentences):
     try:
         import ollama
-
-        # Przygotuj chat z wszystkimi liniami
         chat_text = '\n'.join(cover_sentences)
-
-        # Prompt batch - przesyła całą konwersację naraz
         batch_prompt = f"""You are a sentiment annotation assistant.
 Label the EMOTION category for each line in the following chat.
 Available categories: happy, sad, funny, angry.
@@ -65,34 +63,23 @@ Labels (one per line, matching chat order above):"""
 
         response = ollama.chat(
             model='llama3.1',
-            messages=[{
-                'role': 'user',
-                'content': batch_prompt
-            }]
+            messages=[{'role': 'user', 'content': batch_prompt}]
         )
 
-        # Parsuj odpowiedź - każda linia to jedna etykieta
         response_text = response['message']['content'].strip()
         lines = response_text.lower().split('\n')
-
-        # Czyść whitespace
         labels = [line.strip() for line in lines if line.strip()]
 
-        # Walidacja
         if len(labels) != len(cover_sentences):
             print(f"Warning: Got {len(labels)} labels but expected {len(cover_sentences)}")
-            print(f"Response from LLM:\n{response_text}")
-            # Dopełnij lub obetnij jeśli liczby się nie zgadzają
             if len(labels) < len(cover_sentences):
                 labels.extend(['happy'] * (len(cover_sentences) - len(labels)))
             else:
                 labels = labels[:len(cover_sentences)]
 
-        # Waliduj każdą etykietę
         valid_sentiments = {'happy', 'sad', 'funny', 'angry'}
         for i, label in enumerate(labels):
             if label not in valid_sentiments:
-                # Spróbuj znaleźć sentiment w odpowiedzi
                 found = False
                 for valid in valid_sentiments:
                     if valid in label:
@@ -100,14 +87,11 @@ Labels (one per line, matching chat order above):"""
                         found = True
                         break
                 if not found:
-                    print(f"Warning: Line {i} has invalid label '{label}', defaulting to 'happy'")
                     labels[i] = 'happy'
 
-        # Pokaż wyniki
         for i, (sentence, label) in enumerate(zip(cover_sentences, labels), 1):
             print(f"Line {i}: '{sentence[:45]}...' -> {label.upper()}")
         print("=" * 60)
-
         return labels
 
     except ImportError:
@@ -120,25 +104,22 @@ Labels (one per line, matching chat order above):"""
         return fallback_sentiment_batch(cover_sentences)
 
 def fallback_sentiment_batch(cover_sentences):
-    """
-    Fallback: Simple keyword-based sentiment analysis for all sentences.
-    """
-    happy_words = ['good', 'great', 'love', 'happy', 'excellent', 'wonderful', 'nice', 
+    """Fallback: Simple keyword-based sentiment analysis for all sentences."""
+    happy_words = ['good', 'great', 'love', 'happy', 'excellent', 'wonderful', 'nice',
                    'glad', 'joy', 'thank', 'amazing', 'fantastic', 'perfect', 'best']
-    sad_words = ['bad', 'sad', 'sorry', 'unfortunately', 'terrible', 'awful', 
+    sad_words = ['bad', 'sad', 'sorry', 'unfortunately', 'terrible', 'awful',
                  'disappointed', 'upset', 'worried', 'afraid', 'miss', 'lost', 'fail']
     funny_words = ['haha', 'lol', 'funny', 'joke', 'hilarious', 'laugh', 'amusing',
                    'rofl', 'lmao', 'comedy', 'humor']
-    angry_words = ['angry', 'mad', 'hate', 'annoyed', 'frustrated', 'furious', 
+    angry_words = ['angry', 'mad', 'hate', 'annoyed', 'frustrated', 'furious',
                    'irritated', 'idiot', 'stupid', 'ridiculous', 'hell', 'damn',
                    'wtf', 'bullshit', 'shit', 'pissed', 'fuck', 'asshole']
 
     labels = []
     for sentence in cover_sentences:
         text_lower = sentence.lower()
-
-        # Sprawdź insulty w pytaniach
         insult_patterns = ['idiot', 'stupid', 'moron', 'dumb', 'fool', 'jerk']
+
         if any(insult in text_lower for insult in insult_patterns):
             if 'why' in text_lower or 'what' in text_lower or '?' in sentence:
                 labels.append('angry')
@@ -160,50 +141,35 @@ def fallback_sentiment_batch(cover_sentences):
     return labels
 
 def create_stego_sentences(cover_sentences, secret_bits, sentiment_labels):
-    """
-    Koduje bity używając wstępnie przeanalizowanych etykiet sentymentu.
-    sentiment_labels: lista etykiet ('happy', 'sad', 'funny', 'angry') dla każdej linii
-    """
+    """Koduje bity używając wstępnie przeanalizowanych etykiet sentymentu."""
     results = []
     bit_index = 0
     cover_index = 0
 
     while bit_index < len(secret_bits):
-        # Pobierz aktualną linię cover text
         current_cover = cover_sentences[cover_index % len(cover_sentences)]
-
-        # Pobierz etykietę sentymentu dla tej linii
         emoticon_set_name = sentiment_labels[cover_index % len(cover_sentences)]
-
         emoticon_set = EMOTICON_SETS[emoticon_set_name]
         N = len(emoticon_set)
         n = math.floor(math.log2(N))
 
-        # Sprawdź czy mamy wystarczająco bitów
         bits_needed = n + 2
-
         if bit_index + bits_needed > len(secret_bits):
             remaining = secret_bits[bit_index:]
             secret_bits += '0' * (bits_needed - len(remaining))
 
-        # Wyciągnij bity
         emoticon_bits = secret_bits[bit_index:bit_index+n]
         position_bit = secret_bits[bit_index+n] if bit_index+n < len(secret_bits) else '0'
         punct_bit = secret_bits[bit_index+n+1] if bit_index+n+1 < len(secret_bits) else '0'
 
-        # Wybierz emotikonę
         d = bits_to_decimal(emoticon_bits)
         if d >= N:
             d = N - 1
         emoticon = emoticon_set[d]
 
-        # Pozycja (0=start, 1=end)
         position = 'end' if position_bit == '1' else 'start'
-
-        # Interpunkcja (0=with comma, 1=without)
         punctuation = '' if punct_bit == '1' else ','
 
-        # Zbuduj stego zdanie
         if position == 'start':
             stego = f"{emoticon}{punctuation} {current_cover}"
         else:
@@ -223,73 +189,89 @@ def create_stego_sentences(cover_sentences, secret_bits, sentiment_labels):
 
     return results
 
-def main():
-    # Parametry
-    if len(sys.argv) >= 3:
-        cover_file = sys.argv[1]
-        secret_file = sys.argv[2]
-    else:
-        cover_file = 'cover.txt'
-        secret_file = 'secret.txt'
+def read_cover(args):
+    if args.ic:
+        return args.ic.replace("\\n", "\n")
+    if args.fc:
+        try:
+            return Path(args.fc).read_text(encoding='utf-8')
+        except FileNotFoundError:
+            print(f"❌ Błąd: plik coveru nie znaleziony: {args.fc}")
+            exit(1)
+    print("❌ Podaj źródło covera: -ic (tekst) lub -fc (plik)")
+    exit(1)
 
-    # Wczytaj cover sentences
-    if not os.path.exists(cover_file):
-        print(f"Error: Cover file '{cover_file}' not found!")
-        sys.exit(1)
+def read_secret(args):
+    if args.is_:
+        return args.is_
+    if args.fs:
+        try:
+            return Path(args.fs).read_text(encoding='utf-8').strip()
+        except FileNotFoundError:
+            print(f"❌ Błąd: plik secretu nie znaleziony: {args.fs}")
+            exit(1)
+    print("❌ Podaj źródło secretu: -is (tekst) lub -fs (plik)")
+    exit(1)
 
-    with open(cover_file, 'r', encoding='utf-8') as f:
-        cover_sentences = [line.strip() for line in f if line.strip()]
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Enkoduj tajną wiadomość w tekście coveru z emotikonami")
 
+    group_cover = parser.add_mutually_exclusive_group(required=True)
+    group_cover.add_argument('-ic', type=str, help="Cover text bezpośrednio z linii komend")
+    group_cover.add_argument('-fc', type=str, help="Plik z cover textem")
+
+    group_secret = parser.add_mutually_exclusive_group(required=True)
+    group_secret.add_argument('-is', dest='is_', type=str, help="Secret message bezpośrednio z linii komend")
+    group_secret.add_argument('-fs', type=str, help="Plik z secret message")
+
+    parser.add_argument('-o', type=str, default="stego_output.txt", help="Plik wyjściowy (domyślnie: stego_output.txt)")
+
+    args = parser.parse_args()
+
+    cover_text = read_cover(args)
+    secret_message = read_secret(args)
+    
+    cover_sentences = [line.strip() for line in cover_text.split('\n') if line.strip()]
     if not cover_sentences:
-        print(f"Error: Cover file '{cover_file}' is empty!")
+        print("❌ Błąd: cover text jest pusty!")
         sys.exit(1)
 
-    # Wczytaj secret message
-    if not os.path.exists(secret_file):
-        print(f"Error: Secret file '{secret_file}' not found!")
-        sys.exit(1)
-
-    with open(secret_file, 'r', encoding='utf-8') as f:
-        secret_message = f.read().strip()
-
-    # Konwertuj na binarny
     secret_bits = text_to_binary(secret_message)
 
     print(f"\n{'=' * 60}")
     print("STEGANOGRAPHY WITH BATCH SENTIMENT ANALYSIS")
     print(f"{'=' * 60}")
-    print(f"\nCover sentences (from {cover_file}): {len(cover_sentences)} messages")
-    print(f"Secret message (from {secret_file}): {secret_message}")
+    print(f"\nCover sentences: {len(cover_sentences)} messages")
+    print(f"Secret message: {secret_message}")
     print(f"Secret in binary: {secret_bits}")
     print(f"Total bits to embed: {len(secret_bits)}")
     print(f"\nEmoticon sets: 4 categories × 16 emoticons each = 64 total")
     print(f"Bits per emoticon: 4 (log2(16) = 4)")
-    print(f"\nUsing: llama3.1")
+    print(f"\nUsing: llama3.1 (or keyword fallback)")
 
     sentiment_labels = batch_sentiment_labels_with_llm(cover_sentences)
 
-    # Koduj wiadomość
     print(f"\n{'=' * 60}")
     print("ENCODING MESSAGE")
     print(f"{'=' * 60}")
+
     results = create_stego_sentences(cover_sentences, secret_bits, sentiment_labels)
 
     print(f"\n{'=' * 60}")
     print("STEGO SENTENCES (CHAT MESSAGES):")
     print(f"{'=' * 60}")
 
-    with open('stego_output.txt', 'w', encoding='utf-8') as f:
+    with open(args.o, 'w', encoding='utf-8') as f:
         for i, result in enumerate(results, 1):
             print(f"\nMessage {i}:")
-            print(f"  Original: {result['cover_used']}")
-            print(f"  Stego: {result['sentence']}")
-            print(f"  Emoticon: {result['emoticon']} (from '{result['set']}' set)")
-            print(f"  Bits: {result['bits_embedded']} ({result['bits_count']} bits)")
+            print(f" Original: {result['cover_used']}")
+            print(f" Stego: {result['sentence']}")
+            print(f" Emoticon: {result['emoticon']} (from '{result['set']}' set)")
+            print(f" Bits: {result['bits_embedded']} ({result['bits_count']} bits)")
             f.write(result['sentence'] + '\n')
 
     print(f"\n{'=' * 60}")
-    print(f"Total messages created: {len(results)}")
-    print(f"Stego sentences saved to: stego_output.txt")
+    print(f"✓ Total messages created: {len(results)}")
+    print(f"✓ Stego sentences saved to: {args.o}")
+    print(f"{'=' * 60}")
 
-if __name__ == "__main__":
-    main()
