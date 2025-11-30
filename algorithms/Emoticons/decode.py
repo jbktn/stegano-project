@@ -94,26 +94,11 @@ def decode_messages(stego_sentences):
     """Zdekoduj wszystkie stego zdania i wyciągnij ukrytą wiadomość."""
     all_bits = ""
 
-    print("\n" + "=" * 60)
-    print("EXTRACTING BITS FROM STEGO SENTENCES:")
-    print("=" * 60)
-
     for i, sentence in enumerate(stego_sentences, 1):
         result = extract_bits_from_sentence(sentence)
         if result:
             bits, emoticon, set_name = result
             all_bits += bits
-            print(f"\nMessage {i}: {sentence}")
-            print(f" Emoticon: {emoticon} (from '{set_name}' set)")
-            print(f" Extracted bits: {bits} ({len(bits)} bits)")
-        else:
-            print(f"\nMessage {i}: {sentence}")
-            print(f" No emoticon found!")
-
-    print(f"\n{'=' * 60}")
-    print(f"Total bits extracted: {len(all_bits)}")
-    print(f"Binary: {all_bits}")
-    print(f"{'=' * 60}\n")
 
     decoded_text = binary_to_text(all_bits)
     return decoded_text, all_bits
@@ -133,6 +118,8 @@ if __name__ == "__main__":
         stego_sentences = [line.strip() for line in f if line.strip()]
 
     decoded_text, all_bits = decode_messages(stego_sentences)
+
+    print(decoded_text)
 
     if args.out_file:
         Path(args.out_file).write_text(decoded_text, encoding='utf-8')

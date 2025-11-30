@@ -575,12 +575,12 @@ class HelpWindow(QMessageBox):
         
         <h3>Obsługiwane algorytmy:</h3>
         <ul>
-          <li><b>Formatting Spaces</b> - formatowanie spacji (.html)</li>
-          <li><b>Shift Position</b> - przesunięcie pozycji (.html)</li>
+          <li><b>00011011</b> - formatowanie spacji (.html)</li>
+          <li><b>Line_Shift_Coding</b> - przesunięcie pozycji (.html)</li>
           <li><b>Feature Coding</b> - kodowanie cech znaków (.txt)</li>
-          <li><b>One Time Pad</b> - szyfrowanie one-time pad (.txt/.bin)</li>
-          <li><b>PDF Color</b> - kodowanie w kolorach liter PDF (.pdf)</li>
-          <li><b>Emoticon Sentiment</b> - kodowanie w emotikonach z Ollama (.txt)</li>
+          <li><b>Missing Letter</b> - szyfrowanie one-time pad (.txt/.bin)</li>
+          <li><b>Autorski</b> - kodowanie w kolorach liter PDF (.pdf)</li>
+          <li><b>Emoticons</b> - kodowanie w emotikonach z Ollama (.txt)</li>
         </ul>
         
         <h3>Porady:</h3>
